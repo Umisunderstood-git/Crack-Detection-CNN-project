@@ -1,98 +1,208 @@
-This project is aimed towards creating a CNN model trained on positive and negative classes of images. 
-Positive-> images with having cracks
-Negative -> images do not having Crack
+# CNN-Based Crack Detection using Image Classification
 
-This code follows a flow of industrial MLops steps. 
+## Overview
 
-1. Data validationn-
-We have used os module to check whether data set folder exists. We then also have extracted the paths of postiive and negative
-folders in their seperate respective variables
+This project implements a **Convolutional Neural Network (CNN)** to classify images into two categories:
 
-After checking for two seperate folders in the data set, that is positive or negative we check whether they have images in them
-The logic is used is by checking for several image extensions and extracting each in a seperate variable in form of lists
-so we now have two variables 
-postive_images and negative_ images (these are just lists of names of image files)
+* **Positive Class:** Images containing cracks.
+* **Negative Class:** Images without cracks.
 
-Now since we are going to use keras preprocessing's image datagen 
-keras datgagen is known for editing images on the fly and it also does the classification by looking at the folder structure,
-That means for folder one images it will automatically label it 0
+The project follows an industry-inspired Machine Learning workflow, beginning from data validation and preparation, followed by preprocessing, model training, evaluation, and finally saving the trained model for future inference.
 
-Industrial MLops included 3 highlevel steps that we are trying to replicate
+---
 
-1. Train
-2. Validation
-3. Test
+# Project Workflow
 
-2.Data preparation
-So the aim is to have 3 seperate directories for each and have two independent directories for crack and no crack in each
+## 1. Data Validation
 
-So we will have
-Train/Crack and Train/nocrack
-Validate/Crack and Validate/nocrack
+Before training the model, the dataset is validated to ensure that the required directory structure exists.
 
-Then we have used shutil copy in our self defined function split_n_copy. Here we have used list slicing to distribute the data
+Using Python's `os` module, the program checks whether the dataset directory is available and verifies that both **Crack** and **No Crack** folders are present.
 
-70 percent to train
-15 percenet to validate and 
-15 percent to test
+The image paths from both classes are then extracted by checking for supported image extensions. Rather than loading the images immediately, only their file paths are collected into separate lists.
 
-The logic is getting all this seperated in name list of each, and then adding them to the above declared directories
+This validation step ensures that the training pipeline begins only if a valid dataset is available, preventing failures later during training.
 
-2.1 Image preprocessing and augmentation
+---
 
-We declare 3 objects of keras.preprocessing's Image datagen
-This augments images on the fly. This means that augmented images will not be stored in your hard disk, but in memory while sending 
-images for training
+## 2. Data Preparation
 
-We have chosen image size of 128x128 dimensions
+Most production Machine Learning pipelines separate data into three independent datasets:
 
-the same object of flow_from_directory works to pick images from directory. and the class_mode="binary" tells it that the directory has two folders each of one class
-so that it can label appropriately
+* **Training Dataset**
+* **Validation Dataset**
+* **Testing Dataset**
 
-3.Model building
-We are making custom CNN model, so we use keras.models sequential model. 
-This allows us to define our own cnn layers
+The objective is to ensure that the model learns only from the training data while remaining capable of generalizing to unseen images.
 
-We have chosen 3 layers of convolutional-maxpooling (max pooling was chosen since the image data set is pretty clear. WE dont have much fear of loosing spatial featurs)
-As a CNN we have then added two layers of a feed forward neural network with activation ReLu and a dropout layer.
+The dataset is automatically organized into the following directory structure:
 
-Reason of dropout -> To prevent overfitting, we randomly drop few layers so that model doesnt answer by memorizing exactly from them
+```text
+dataset/
+│
+├── train/
+│   ├── Crack/
+│   └── No_Crack/
+│
+├── validation/
+│   ├── Crack/
+│   └── No_Crack/
+│
+└── test/
+    ├── Crack/
+    └── No_Crack/
+```
 
-we then compile our sequential model
+The dataset is split using a custom `split_n_copy()` function, which utilizes Python list slicing along with the `shutil` module to copy images into their respective folders.
 
+Dataset split:
 
-4. Early stopping
-   We have used early stoping and model checkpoint to stop training the model when we reach to a good level of accuracy
+* **70%** → Training
+* **15%** → Validation
+* **15%** → Testing
 
- 5.Training the model. 
- In this step we gave our train_data object declared on the flow_from_directory. This will preproces/augment image to our size and options on the fly while going for the training
- Epochs chosen here are 15
+This ensures that each dataset remains completely independent throughout the Machine Learning pipeline.
 
-Validation_data parameter in model.fit allows us to point towards the place we have our validation dataset
+---
 
-What happens during training?
-Model only trains on the train dataset. This means cnn will do a forward pass and back propogation/weights update on the train dataset. After each of this steps it will go to validation data set
-to check the accuracy of whatever it has learnt till now. 
-NOTE: It will not change its weights and biases (parameters) on the basis of validation dataset
+## 3. Image Preprocessing & Data Augmentation
 
-So what is the need of validation? 
-Data scientist can see how model performed at the end of each epoch as it gets loaded in 
-model.history["val_accuracy"]. This tells the models accuracy on the validation dataset. So now this will enable us to identify overfitting i.e if in a particular step models training accuracy is high but,
-validation accuracy is low, this means model has overfitted .
+Image preprocessing is performed using Keras' `ImageDataGenerator`.
 
+One advantage of `ImageDataGenerator` is that it performs preprocessing and augmentation **on-the-fly** while batches are being loaded for training. This means that augmented images are generated in memory rather than being permanently stored on disk, making the training process more storage-efficient.
 
-6. Model evaluation
+All images are resized to **128 × 128** pixels before being fed into the CNN.
 
-We have plot graph of various accuracy metrics along with confusion matrix and classification report
+The `flow_from_directory()` function automatically reads images directly from the dataset folders.
 
+Since the dataset consists of only two classes, `class_mode="binary"` is used. Keras automatically assigns binary labels based on the folder names, eliminating the need for manual labeling.
 
-7. Save model
+---
 
-   Ultimately we save our model using model.save
+## 4. Model Architecture
 
+The classifier is implemented using Keras' **Sequential API**, allowing a custom CNN architecture to be built layer by layer.
 
+The architecture consists of:
 
+* Three Convolutional layers
+* Three Max Pooling layers
+* Flatten layer
+* Two Fully Connected (Dense) layers
+* ReLU activation functions
+* Dropout layer
+* Final Sigmoid output layer
 
-NOTE: This is designed to work on linux and macos systems. For windows just change "/" to "\" wherever needed and you shall be good.
+The convolutional layers learn spatial features such as edges, textures, and crack patterns, while the pooling layers reduce spatial dimensions and computational complexity by retaining the most significant features.
 
+The fully connected layers use the extracted features to perform the final binary classification.
 
+A **Dropout** layer is included to reduce overfitting. During training, dropout randomly deactivates a fraction of neurons, preventing the network from relying too heavily on specific neurons and encouraging better generalization.
+
+Finally, the model is compiled by defining the optimizer, loss function, and evaluation metrics.
+
+---
+
+## 5. Training the Model
+
+Training is performed using the `model.fit()` function.
+
+The training dataset generated by `flow_from_directory()` is passed to the model, where images are preprocessed and augmented dynamically before each batch is processed.
+
+The model is trained for **15 epochs**.
+
+During each epoch, the CNN performs:
+
+1. Forward propagation
+2. Loss calculation
+3. Backpropagation
+4. Weight updates
+
+These parameter updates are performed **only** using the training dataset.
+
+---
+
+## 6. Validation
+
+After each training epoch, the model is evaluated using the validation dataset.
+
+It is important to note that the validation dataset **does not participate in learning**. No weights or biases are updated during validation.
+
+Instead, validation provides an unbiased estimate of how well the model performs on unseen data.
+
+Metrics such as `val_accuracy` and `val_loss` are recorded after every epoch, allowing us to monitor the model's learning behaviour.
+
+One of the primary purposes of validation is detecting **overfitting**.
+
+For example, if the training accuracy continues to increase while the validation accuracy stagnates or decreases, it indicates that the model is memorizing the training data rather than learning generalized features.
+
+---
+
+## 7. Early Stopping & Model Checkpointing
+
+To improve training efficiency, two callbacks are implemented:
+
+### Early Stopping
+
+Early Stopping continuously monitors the validation performance and automatically stops training once the model stops improving. This prevents unnecessary training and helps reduce overfitting.
+
+### Model Checkpoint
+
+Model Checkpoint automatically saves the best-performing model observed during training, ensuring that the final saved model corresponds to the highest validation performance rather than simply the last epoch.
+
+---
+
+## 8. Model Evaluation
+
+After training, the model is evaluated using the independent test dataset.
+
+Several evaluation metrics are generated:
+
+* Training Accuracy Curve
+* Validation Accuracy Curve
+* Training Loss Curve
+* Validation Loss Curve
+* Confusion Matrix
+* Classification Report
+
+The confusion matrix provides a detailed view of correctly and incorrectly classified images, while the classification report summarizes precision, recall, F1-score, and overall accuracy.
+
+---
+
+## 9. Saving the Model
+
+Once training is complete, the final model is saved using Keras' `model.save()` function.
+
+Saving the trained model allows it to be loaded later for inference without requiring retraining, making it suitable for deployment into production or integration with other applications.
+
+---
+
+## Technologies Used
+
+* Python
+* TensorFlow
+* Keras
+* NumPy
+* Matplotlib
+* Scikit-learn
+* OS Module
+* shutil
+
+---
+
+## Key Learning Outcomes
+
+This project demonstrates the complete workflow of a binary image classification pipeline, including:
+
+* Dataset validation and preparation
+* Automated dataset splitting
+* Image preprocessing and augmentation
+* Building a custom CNN architecture
+* Training using backpropagation
+* Monitoring validation performance
+* Detecting overfitting
+* Applying Early Stopping and Model Checkpointing
+* Evaluating the model using standard classification metrics
+* Saving the trained model for future inference
+
+The primary objective of this project was not only to build an image classifier, but also to understand the reasoning behind each stage of a real-world Machine Learning pipeline and how these stages contribute to building a robust and generalizable model.
